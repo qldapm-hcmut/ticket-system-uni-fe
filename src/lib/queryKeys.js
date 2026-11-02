@@ -10,4 +10,6 @@ export const qk = {
   myRegistrations: (params) => ['my-registrations', params],
   registration: (id) => ['registration', id],
   eventRegistrations: (id, params) => ['event-registrations', id, params],
+  checkIns: (id, params) => ['check-ins', id, params],
+  eventSummary: (id) => ['event-summary', id],
 };
