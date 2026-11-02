@@ -1,4 +1,5 @@
 import { Link, useParams } from 'react-router-dom';
+import { QRCodeCanvas } from 'qrcode.react';
 import { useRegistration } from '../../features/registrations/useRegistrations';
 import { REGISTRATION_STATUS } from '../../constants/roles';
 import { RegistrationStatusBadge } from '../../components/ui/Badge';
@@ -33,14 +34,20 @@ export function RegistrationDetailPage() {
 
         {isRegistered ? (
           <div className="mt-6 flex flex-col items-center">
-            {/* ===== BOX QR (để trống) =====
-                qrToken có dạng v1.<regId>.<eventId>.<hmac>; sẽ vẽ QR từ chuỗi này
-                bằng thư viện (vd 'qrcode.react') ở bước sau. */}
-            <div className="flex h-56 w-56 items-center justify-center rounded-xl border-2 border-dashed border-slate-300 bg-slate-50 text-center text-sm text-slate-400">
-              QR code
-              <br />
-              (sẽ bổ sung sau)
-            </div>
+            {/* QR vẽ từ qrToken (dạng v1.<regId>.<eventId>.<hmac>).
+                Sinh viên chỉ xuất trình QR; KHÔNG có nút tự check-in (ASM-08). */}
+            {reg.qrToken ? (
+              <div className="rounded-xl border border-slate-200 bg-white p-4">
+                <QRCodeCanvas value={reg.qrToken} size={208} level="M" marginSize={2} />
+              </div>
+            ) : (
+              <div className="flex h-56 w-56 items-center justify-center rounded-xl border-2 border-dashed border-slate-300 bg-slate-50 text-center text-sm text-slate-400">
+                Chưa có mã QR
+              </div>
+            )}
+            <p className="mt-3 text-center text-xs text-slate-400">
+              Xuất trình mã này cho ban tổ chức để được check-in.
+            </p>
 
             {reg.checkinCode && (
               <div className="mt-5 text-center">
