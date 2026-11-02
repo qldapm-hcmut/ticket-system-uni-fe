@@ -6,6 +6,7 @@ import { QrScanner } from '../../features/checkin/QrScanner';
 import { CheckinResultBanner } from '../../features/checkin/CheckinResultBanner';
 import { CheckinRoster } from '../../features/checkin/CheckinRoster';
 import { ReportSummaryStrip } from '../../features/reports/ReportSummaryStrip';
+import { ExportRegistrationsButton } from '../../features/reports/ExportRegistrationsButton';
 import { toast } from '../../lib/toast';
 import { Button } from '../../components/ui/Button';
 import { Field, Input } from '../../components/ui/Field';
@@ -56,8 +57,11 @@ export function CheckinPage() {
         </p>
       </div>
 
-      <div className="mt-4">
+      <div className="mt-4 space-y-3">
         <ReportSummaryStrip eventId={eventId} />
+        <div className="flex justify-end">
+          <ExportRegistrationsButton eventId={eventId} />
+        </div>
       </div>
 
       {/* Tabs */}
