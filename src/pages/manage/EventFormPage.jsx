@@ -157,6 +157,18 @@ function EditEventForm({ eventId }) {
         <EventStatusBadge status={status} />
       </div>
 
+      {/* A35: lối vào check-in — chỉ ORGANIZER, khi sự kiện đã công bố */}
+      {hasRole(ROLES.ORGANIZER) && status === EVENT_STATUS.PUBLISHED && (
+        <div className="mt-3">
+          <Link
+            to={`/manage/events/${event.id}/check-in`}
+            className="inline-flex items-center gap-2 rounded-lg bg-brand-500 px-4 py-2 text-sm font-medium text-white hover:bg-brand-600"
+          >
+            📷 Mở màn hình check-in
+          </Link>
+        </div>
+      )}
+
       {status === EVENT_STATUS.REJECTED && event.rejectReason && (
         <p className="mt-3 rounded-lg bg-red-50 px-4 py-3 text-sm text-red-700">
           <strong>Lý do từ chối:</strong> {event.rejectReason}
