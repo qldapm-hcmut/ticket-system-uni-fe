@@ -1,4 +1,4 @@
-import { NavLink, Outlet, Link } from 'react-router-dom';
+import { NavLink, Outlet, Link, useLocation } from 'react-router-dom';
 import { Home, Ticket, ClipboardList, ShieldCheck, User } from 'lucide-react';
 import { useAuth } from '../../features/auth/AuthContext';
 import { ROLES, ROLE_LABELS } from '../../constants/roles';
@@ -63,8 +63,16 @@ function deskNavClass({ isActive }) {
 }
 
 /** Khung chung sau khi đăng nhập: header desktop + app bar/bottom nav mobile theo vai trò. */
+// Route có CTA cố định ở đáy (ẩn bottom nav để CTA không chồng nav) — vd chi tiết sự kiện.
+const FIXED_CTA_ROUTES = [/^\/events\/[^/]+$/];
+function hasFixedBottomCta(pathname) {
+  return FIXED_CTA_ROUTES.some((re) => re.test(pathname));
+}
+
 export function AppLayout() {
   const { user, logout, hasRole } = useAuth();
+  const location = useLocation();
+  const hideBottomNav = hasFixedBottomCta(location.pathname);
   const items = NAV_ITEMS.filter((it) => !it.requires || it.requires.some((r) => hasRole(r)));
   const roleText = (user?.roles ?? []).map((r) => ROLE_LABELS[r] ?? r).join(' · ') || '—';
 
@@ -122,16 +130,21 @@ export function AppLayout() {
       </header>
 
       {/* ===== Nội dung ===== */}
-      <main className="mx-auto max-w-6xl px-4 py-6 pb-[88px] lg:px-10 lg:pb-10">
+      <main
+        className={`mx-auto max-w-6xl px-4 py-6 lg:px-10 lg:pb-10 ${
+          hideBottomNav ? 'pb-6' : 'pb-[88px]'
+        }`}
+      >
         <Outlet />
       </main>
 
-      {/* ===== Bottom nav mobile (<1024) ===== */}
-      <nav
-        aria-label="Điều hướng chính"
-        className="fixed inset-x-0 bottom-0 z-30 border-t border-slate-200 bg-white px-3 lg:hidden"
-        style={{ paddingBottom: 'max(20px, env(safe-area-inset-bottom))' }}
-      >
+      {/* ===== Bottom nav mobile (<1024) — ẩn ở route có CTA cố định ===== */}
+      {!hideBottomNav && (
+        <nav
+          aria-label="Điều hướng chính"
+          className="fixed inset-x-0 bottom-0 z-30 border-t border-slate-200 bg-white px-3 lg:hidden"
+          style={{ paddingBottom: 'max(20px, env(safe-area-inset-bottom))' }}
+        >
         <ul className="mx-auto flex max-w-md items-stretch justify-around">
           {items.map((it) => {
             const Icon = it.icon;
@@ -168,7 +181,8 @@ export function AppLayout() {
             );
           })}
         </ul>
-      </nav>
+        </nav>
+      )}
     </div>
   );
 }
