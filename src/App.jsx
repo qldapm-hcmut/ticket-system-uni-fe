@@ -15,6 +15,7 @@ import { RegistrationDetailPage } from './pages/me/RegistrationDetailPage';
 import { ManageEventsPage } from './pages/manage/ManageEventsPage';
 import { EventFormPage } from './pages/manage/EventFormPage';
 import { PendingApprovalsPage } from './pages/admin/PendingApprovalsPage';
+import { ProfilePage } from './pages/account/ProfilePage';
 import { ForbiddenPage } from './pages/ForbiddenPage';
 import { NotFoundPage } from './pages/NotFoundPage';
 
@@ -42,6 +43,7 @@ export default function App() {
 
         <Route path="/my-registrations" element={<MyRegistrationsPage />} />
         <Route path="/registrations/:registrationId" element={<RegistrationDetailPage />} />
+        <Route path="/account" element={<ProfilePage />} />
 
         {/* Organizer / Admin */}
         <Route
