@@ -1,12 +1,11 @@
 import { useState } from 'react';
 import { Link } from 'react-router-dom';
+import { ScanLine } from 'lucide-react';
 import {
   useMyRegistrations,
-  useRegistration,
   useCancelRegistration,
 } from '../../features/registrations/useRegistrations';
 import { REGISTRATION_STATUS } from '../../constants/roles';
-import { Ticket } from '../../features/registrations/Ticket';
 import { Badge, RegistrationStatusBadge } from '../../components/ui/Badge';
 import { Button } from '../../components/ui/Button';
 import { Modal } from '../../components/ui/Modal';
@@ -26,27 +25,44 @@ function metaOf(event) {
   return `${formatDateTime(event.startAt)} · ${event.location}`;
 }
 
-/** Vé REGISTERED: nạp qrToken qua GET /registrations/:id rồi vẽ QR. */
-function RegisteredTicket({ item, onCancel }) {
-  const { data: detail, isPending } = useRegistration(item.id);
+/**
+ * Thẻ tóm tắt vé REGISTERED. KHÔNG nạp qrToken ở đây (tránh N+1) — QR chỉ render ở
+ * trang chi tiết vé. Mã dự phòng (checkinCode) đã có sẵn trong item nên hiển thị trực tiếp.
+ */
+function RegisteredSummary({ item, onCancel }) {
   return (
-    <div>
-      <Ticket
-        title={item.event.title}
-        metaText={metaOf(item.event)}
-        statusBadge={
-          <Badge tone="blue" dot>
-            Đã đăng ký
-          </Badge>
-        }
-        qrToken={detail?.qrToken}
-        checkinCode={detail?.checkinCode ?? item.checkinCode}
-        loadingQr={isPending}
-      />
-      <div className="mt-2 flex justify-end">
-        <Button variant="ghost" size="sm" onClick={() => onCancel(item)}>
-          Hủy đăng ký
-        </Button>
+    <div className="overflow-hidden rounded-card border border-slate-200 bg-white shadow-e1">
+      <div className="flex items-center justify-between bg-brand-700 px-4 py-2.5">
+        <span className="text-xs font-medium uppercase tracking-wide text-white/75">
+          Vé tham dự
+        </span>
+        <Badge tone="blue" dot>
+          Đã đăng ký
+        </Badge>
+      </div>
+      <div className="p-4">
+        <p className="line-clamp-2 text-[15px] font-semibold text-slate-900">{item.event.title}</p>
+        <p className="mt-0.5 text-[13px] text-slate-500">{metaOf(item.event)}</p>
+        {item.checkinCode && (
+          <p className="mt-2 flex items-center gap-1.5 text-[13px] text-slate-500">
+            <ScanLine size={14} aria-hidden="true" />
+            Mã dự phòng:{' '}
+            <span className="font-mono font-semibold tracking-widest text-slate-800">
+              {item.checkinCode}
+            </span>
+          </p>
+        )}
+        <div className="mt-3 flex gap-2">
+          <Link
+            to={`/registrations/${item.id}`}
+            className="inline-flex h-10 flex-1 items-center justify-center rounded-control bg-brand-700 text-[13px] font-semibold text-white transition-colors hover:bg-brand-600 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-400 focus-visible:ring-offset-2"
+          >
+            Xem vé / QR
+          </Link>
+          <Button variant="secondary" onClick={() => onCancel(item)}>
+            Hủy
+          </Button>
+        </div>
       </div>
     </div>
   );
@@ -87,7 +103,7 @@ function InactiveCard({ item }) {
   );
 }
 
-/** A29/R3 — Đăng ký của tôi (dạng vé). */
+/** A29/R3 — Đăng ký của tôi (danh sách tóm tắt; QR ở trang chi tiết vé). */
 export function MyRegistrationsPage() {
   const [tabKey, setTabKey] = useState('upcoming');
   const [page, setPage] = useState(1);
@@ -137,7 +153,7 @@ export function MyRegistrationsPage() {
       <div className="mt-5 space-y-4">
         {isPending ? (
           <>
-            <Skeleton className="h-64 w-full rounded-ticket" />
+            <Skeleton className="h-40 w-full rounded-card" />
             <Skeleton className="h-24 w-full rounded-card" />
           </>
         ) : isError ? (
@@ -159,7 +175,7 @@ export function MyRegistrationsPage() {
           <div className={`space-y-4 ${isFetching ? 'opacity-60' : ''}`}>
             {items.map((item) => {
               if (item.status === REGISTRATION_STATUS.REGISTERED) {
-                return <RegisteredTicket key={item.id} item={item} onCancel={setToCancel} />;
+                return <RegisteredSummary key={item.id} item={item} onCancel={setToCancel} />;
               }
               if (item.status === REGISTRATION_STATUS.WAITLISTED) {
                 return <WaitlistCard key={item.id} item={item} onLeave={setToCancel} />;
