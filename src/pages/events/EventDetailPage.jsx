@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { Link, useParams } from 'react-router-dom';
+import { ArrowLeft, Calendar, MapPin, Users } from 'lucide-react';
 import { useEvent } from '../../features/events/useEvents';
 import {
   useRegisterForEvent,
@@ -7,12 +8,29 @@ import {
 } from '../../features/registrations/useRegistrations';
 import { useAuth } from '../../features/auth/AuthContext';
 import { ROLES, REGISTRATION_STATUS } from '../../constants/roles';
-import { EventStatusBadge, RegistrationStatusBadge } from '../../components/ui/Badge';
+import { Badge, EventStatusBadge, RegistrationStatusBadge } from '../../components/ui/Badge';
 import { Button } from '../../components/ui/Button';
 import { Modal } from '../../components/ui/Modal';
 import { CenteredSpinner } from '../../components/ui/Spinner';
 import { ErrorState } from '../../components/ui/states';
-import { formatEventRange, formatDateTime } from '../../utils/datetime';
+import { formatDate, formatDateTime, timeRange, weekdayVi, hhmmMinus } from '../../utils/datetime';
+
+function InfoRow({ icon: Icon, title, subtitle }) {
+  return (
+    <div className="flex items-start gap-3">
+      <span
+        className="flex h-10 w-10 shrink-0 items-center justify-center rounded-control bg-brand-50 text-brand-700"
+        aria-hidden="true"
+      >
+        <Icon size={20} />
+      </span>
+      <div className="min-w-0">
+        <p className="text-[15px] font-medium text-slate-900">{title}</p>
+        {subtitle && <p className="mt-0.5 text-[13px] text-slate-500">{subtitle}</p>}
+      </div>
+    </div>
+  );
+}
 
 export function EventDetailPage() {
   const { eventId } = useParams();
@@ -27,116 +45,171 @@ export function EventDetailPage() {
   if (isError) return <ErrorState error={error} onRetry={refetch} />;
 
   const reg = event.myRegistration;
+  const waitlisted = reg?.status === REGISTRATION_STATUS.WAITLISTED;
   const isActiveReg =
-    reg &&
-    (reg.status === REGISTRATION_STATUS.REGISTERED ||
-      reg.status === REGISTRATION_STATUS.WAITLISTED);
+    reg && (reg.status === REGISTRATION_STATUS.REGISTERED || waitlisted);
   const isStudent = hasRole(ROLES.STUDENT);
   const canManage = hasRole(ROLES.ORGANIZER) || hasRole(ROLES.ADMIN);
   const full = event.availableSeats <= 0;
+  const mapHref = `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(event.location)}`;
 
   const handleCancel = () => {
-    cancelReg.mutate(
-      { registrationId: reg.id },
-      { onSettled: () => setConfirmCancel(false) },
-    );
+    cancelReg.mutate({ registrationId: reg.id }, { onSettled: () => setConfirmCancel(false) });
   };
 
-  return (
-    <div className="mx-auto max-w-3xl">
-      <Link to="/events" className="text-sm text-brand-600 hover:underline">
-        ← Về danh sách sự kiện
-      </Link>
-
-      <div className="mt-3 rounded-2xl border border-slate-200 bg-white p-6">
-        <div className="flex flex-wrap items-center justify-between gap-2">
-          <span className="text-sm font-medium text-brand-600">{event.unit?.name}</span>
-          <EventStatusBadge status={event.status} />
-        </div>
-        <h1 className="mt-2 text-2xl font-semibold text-slate-800">{event.title}</h1>
-
-        {event.description && (
-          <p className="mt-3 whitespace-pre-line text-sm text-slate-600">{event.description}</p>
-        )}
-
-        <dl className="mt-5 grid grid-cols-1 gap-4 text-sm sm:grid-cols-2">
-          <Info label="Thời gian" value={formatEventRange(event.startAt, event.endAt)} />
-          <Info label="Địa điểm" value={event.location} />
-          <Info
-            label="Nhận đăng ký"
-            value={`${formatDateTime(event.registrationOpensAt)} → ${formatDateTime(
-              event.registrationClosesAt,
-            )}`}
-          />
-          <Info label="Hạn tự hủy" value={formatDateTime(event.cancelDeadline)} />
-          <Info
-            label="Sức chứa"
-            value={`${event.registeredCount}/${event.capacity} đã đăng ký`}
-          />
-          <Info
-            label="Chỗ trống"
-            value={full ? `Hết chỗ · ${event.waitlistCount} trong hàng chờ` : `${event.availableSeats} chỗ`}
-          />
-        </dl>
-
-        {/* Khu vực hành động cho sinh viên (A29) */}
-        {isStudent && (
-          <div className="mt-6 rounded-xl bg-slate-50 p-4">
-            {isActiveReg ? (
-              <div className="flex flex-wrap items-center justify-between gap-3">
-                <div className="flex items-center gap-2 text-sm">
-                  <span className="text-slate-600">Trạng thái của bạn:</span>
-                  <RegistrationStatusBadge status={reg.status} />
-                  {reg.status === REGISTRATION_STATUS.WAITLISTED && reg.waitlistPosition && (
-                    <span className="text-slate-500">(vị trí {reg.waitlistPosition})</span>
-                  )}
-                </div>
-                <div className="flex gap-2">
-                  <Link
-                    to={`/registrations/${reg.id}`}
-                    className="inline-flex items-center rounded-lg bg-white px-2.5 py-1.5 text-sm font-medium text-slate-700 ring-1 ring-inset ring-slate-300 hover:bg-slate-50"
-                  >
-                    Xem vé / QR
-                  </Link>
-                  <Button
-                    variant="danger"
-                    size="sm"
-                    loading={cancelReg.isPending}
-                    onClick={() => setConfirmCancel(true)}
-                  >
-                    {reg.status === REGISTRATION_STATUS.WAITLISTED ? 'Rời hàng chờ' : 'Hủy đăng ký'}
-                  </Button>
-                </div>
-              </div>
-            ) : event.isRegistrationOpen ? (
-              <div className="flex flex-wrap items-center justify-between gap-3">
-                <p className="text-sm text-slate-600">
-                  {full
-                    ? 'Sự kiện đã hết chỗ — bạn sẽ được xếp vào hàng chờ.'
-                    : 'Sự kiện đang mở đăng ký.'}
-                </p>
-                <Button loading={register.isPending} onClick={() => register.mutate(event.id)}>
-                  {full ? 'Vào hàng chờ' : 'Đăng ký ngay'}
-                </Button>
-              </div>
-            ) : (
-              <p className="text-sm text-slate-500">Hiện không trong thời gian nhận đăng ký.</p>
-            )}
+  /** Khối hành động (dùng cho CTA cố định mobile và card sticky desktop). */
+  const cta = (
+    <>
+      {isStudent ? (
+        isActiveReg ? (
+          <div className="space-y-2.5">
+            <div className="flex items-center gap-2">
+              <RegistrationStatusBadge status={reg.status} />
+              {waitlisted && reg.waitlistPosition && (
+                <span className="text-[13px] text-slate-500">Vị trí #{reg.waitlistPosition}</span>
+              )}
+            </div>
+            <div className="flex gap-2">
+              <Link
+                to={`/registrations/${reg.id}`}
+                className="inline-flex h-12 flex-1 items-center justify-center rounded-control bg-brand-700 text-[15px] font-semibold text-white transition-colors hover:bg-brand-600 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-400 focus-visible:ring-offset-2"
+              >
+                Xem vé / QR
+              </Link>
+              <Button
+                variant="secondary"
+                size="lg"
+                loading={cancelReg.isPending}
+                onClick={() => setConfirmCancel(true)}
+              >
+                {waitlisted ? 'Rời chờ' : 'Hủy'}
+              </Button>
+            </div>
           </div>
-        )}
-
-        {/* Lối tắt cho Organizer/Admin */}
-        {canManage && (
-          <div className="mt-6 flex gap-2 border-t border-slate-200 pt-4">
-            <Link
-              to={`/manage/events/${event.id}`}
-              className="text-sm font-medium text-brand-600 hover:underline"
+        ) : event.isRegistrationOpen ? (
+          <div>
+            <Button
+              size="lg"
+              className="w-full"
+              loading={register.isPending}
+              onClick={() => register.mutate(event.id)}
             >
-              Quản lý sự kiện này →
-            </Link>
+              {full ? 'Vào danh sách chờ' : 'Đăng ký tham gia'}
+            </Button>
+            <p className="mt-2 text-center text-xs text-slate-500">
+              Có thể tự hủy trước {formatDateTime(event.cancelDeadline)} (24 giờ trước giờ bắt đầu)
+            </p>
           </div>
+        ) : (
+          <Button size="lg" className="w-full" disabled>
+            Hiện không nhận đăng ký
+          </Button>
+        )
+      ) : canManage ? (
+        <Link
+          to={`/manage/events/${event.id}`}
+          className="inline-flex h-12 w-full items-center justify-center rounded-control bg-brand-700 text-[15px] font-semibold text-white hover:bg-brand-600"
+        >
+          Quản lý sự kiện này
+        </Link>
+      ) : null}
+    </>
+  );
+
+  const hasCta = isStudent || canManage;
+
+  return (
+    <div className={hasCta ? 'pb-32 lg:pb-0' : ''}>
+      {/* ===== Cover ===== */}
+      <div className="bg-brand-cover -mx-4 -mt-6 px-6 pb-7 pt-6 lg:-mx-10 lg:-mt-10 lg:rounded-b-[28px] lg:px-10 lg:pt-10">
+        <Link
+          to="/events"
+          aria-label="Về danh sách sự kiện"
+          className="mb-4 inline-flex h-10 w-10 items-center justify-center rounded-full bg-white/20 text-white transition-colors hover:bg-white/30 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white"
+        >
+          <ArrowLeft size={20} aria-hidden="true" />
+        </Link>
+        <div className="mb-3">
+          {event.isRegistrationOpen ? (
+            <Badge tone="green" dot>
+              Đang mở đăng ký
+            </Badge>
+          ) : (
+            <EventStatusBadge status={event.status} />
+          )}
+        </div>
+        <h1 className="text-2xl font-bold leading-8 tracking-tight text-white lg:text-[28px]">
+          {event.title}
+        </h1>
+        <p className="mt-2 text-[15px] text-white/85">{event.unit?.name}</p>
+      </div>
+
+      {/* ===== Body ===== */}
+      <div className="lg:mx-auto lg:grid lg:max-w-[1000px] lg:grid-cols-[1fr_360px] lg:gap-6 lg:pt-6">
+        <div className="space-y-4 pt-5 lg:pt-0">
+          <div className="space-y-4 rounded-card border border-slate-200 bg-white p-4 shadow-e1">
+            <InfoRow
+              icon={Calendar}
+              title={`${weekdayVi(event.startAt)}, ${formatDate(event.startAt)}`}
+              subtitle={`${timeRange(event.startAt, event.endAt)} · Check-in mở từ ${hhmmMinus(
+                event.startAt,
+                60,
+              )}`}
+            />
+            <InfoRow
+              icon={MapPin}
+              title={event.location}
+              subtitle={
+                <a
+                  href={mapHref}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="text-brand-600 hover:underline"
+                >
+                  Mở trong Google Maps
+                </a>
+              }
+            />
+            <InfoRow
+              icon={Users}
+              title={`${event.registeredCount} / ${event.capacity} đã đăng ký`}
+              subtitle={
+                full
+                  ? `Hết chỗ · ${event.waitlistCount} trong danh sách chờ`
+                  : `Còn ${event.availableSeats} chỗ · hết chỗ sẽ tự vào danh sách chờ`
+              }
+            />
+          </div>
+
+          {event.description && (
+            <div className="rounded-card border border-slate-200 bg-white p-4 shadow-e1">
+              <h2 className="text-base font-semibold text-slate-900">Giới thiệu</h2>
+              <p className="mt-2 whitespace-pre-line text-[15px] leading-[22px] text-slate-700">
+                {event.description}
+              </p>
+            </div>
+          )}
+        </div>
+
+        {/* CTA sticky (desktop) */}
+        {hasCta && (
+          <aside className="hidden lg:block">
+            <div className="sticky top-24 rounded-card border border-slate-200 bg-white p-5 shadow-e2">
+              {cta}
+            </div>
+          </aside>
         )}
       </div>
+
+      {/* CTA cố định (mobile) — nằm trên cùng, che bottom nav ở màn này */}
+      {hasCta && (
+        <div
+          className="fixed inset-x-0 bottom-0 z-40 border-t border-slate-200 bg-white px-4 pt-3 shadow-e2 lg:hidden"
+          style={{ paddingBottom: 'max(20px, env(safe-area-inset-bottom))' }}
+        >
+          {cta}
+        </div>
+      )}
 
       <Modal
         open={confirmCancel}
@@ -154,19 +227,10 @@ export function EventDetailPage() {
         }
       >
         <p className="text-sm text-slate-600">
-          Bạn chắc chắn muốn hủy đăng ký sự kiện <strong>{event.title}</strong>? Nếu có người
-          trong hàng chờ, họ sẽ được chuyển lên thay bạn.
+          Bạn chắc chắn muốn hủy đăng ký sự kiện <strong>{event.title}</strong>? Nếu có người trong
+          danh sách chờ, họ sẽ được chuyển lên thay bạn.
         </p>
       </Modal>
-    </div>
-  );
-}
-
-function Info({ label, value }) {
-  return (
-    <div>
-      <dt className="text-xs uppercase tracking-wide text-slate-400">{label}</dt>
-      <dd className="mt-0.5 text-slate-700">{value}</dd>
     </div>
   );
 }
