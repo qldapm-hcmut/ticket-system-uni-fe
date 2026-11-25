@@ -64,15 +64,37 @@ export function QrScanner({ onScan, paused }) {
 
   if (error) {
     return (
-      <div className="rounded-xl border border-amber-200 bg-amber-50 p-6 text-center text-sm text-amber-700">
+      <div className="flex h-[300px] items-center justify-center rounded-[20px] border border-amber-200 bg-amber-50 p-6 text-center text-sm text-amber-700">
         {error}
       </div>
     );
   }
 
   return (
-    <div className="relative mx-auto max-w-sm overflow-hidden rounded-xl bg-black">
-      <div id={elementId} className="w-full" />
+    <div
+      className="relative h-[300px] overflow-hidden rounded-[20px]"
+      style={{ background: 'radial-gradient(circle at center, #1e293b, #020617)' }}
+    >
+      <div
+        id={elementId}
+        className="absolute inset-0 [&_video]:h-full [&_video]:w-full [&_video]:object-cover"
+      />
+
+      {/* Khung ngắm + vạch quét */}
+      <div className="pointer-events-none absolute inset-0 flex items-center justify-center">
+        <div className="relative h-[220px] w-[220px]">
+          <span className="absolute left-0 top-0 h-6 w-6 rounded-tl-[12px] border-l-4 border-t-4 border-brand-400" />
+          <span className="absolute right-0 top-0 h-6 w-6 rounded-tr-[12px] border-r-4 border-t-4 border-brand-400" />
+          <span className="absolute bottom-0 left-0 h-6 w-6 rounded-bl-[12px] border-b-4 border-l-4 border-brand-400" />
+          <span className="absolute bottom-0 right-0 h-6 w-6 rounded-br-[12px] border-b-4 border-r-4 border-brand-400" />
+          <div className="animate-qr-scanline absolute inset-x-2 top-0 h-0.5 rounded-full bg-brand-400 shadow-[0_0_10px_2px_rgba(20,136,219,0.7)]" />
+        </div>
+      </div>
+
+      <p className="absolute inset-x-0 bottom-3 text-center text-xs text-white/80">
+        Đưa mã QR vào khung · tự quét, chống trùng 2.5s
+      </p>
+
       {/* Lớp phủ khi đang gọi API: chặn thao tác + báo loading */}
       {paused && (
         <div className="absolute inset-0 flex flex-col items-center justify-center gap-2 bg-black/60 text-white">

@@ -71,19 +71,19 @@ body {
   }
 }
 
-/* Vạch quét QR (màn check-in) chạy lên xuống */
+/* Vạch quét QR (màn check-in) chạy lên xuống trong khung ngắm ~220px */
 @keyframes qr-scanline {
   0% {
-    transform: translateY(-46%);
-    opacity: 0.2;
+    transform: translateY(6px);
+    opacity: 0.25;
   }
   50% {
-    transform: translateY(46%);
+    transform: translateY(206px);
     opacity: 1;
   }
   100% {
-    transform: translateY(-46%);
-    opacity: 0.2;
+    transform: translateY(6px);
+    opacity: 0.25;
   }
 }
 

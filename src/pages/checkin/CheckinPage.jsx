@@ -1,24 +1,35 @@
 import { useState } from 'react';
 import { Link, useParams } from 'react-router-dom';
+import { ArrowLeft, ScanLine, Ticket, Users } from 'lucide-react';
 import { useEvent } from '../../features/events/useEvents';
-import { useCheckInActions } from '../../features/checkin/useCheckin';
+import { useCheckInActions, useUndoCheckIn } from '../../features/checkin/useCheckin';
 import { QrScanner } from '../../features/checkin/QrScanner';
 import { CheckinResultBanner } from '../../features/checkin/CheckinResultBanner';
 import { CheckinRoster } from '../../features/checkin/CheckinRoster';
 import { ReportSummaryStrip } from '../../features/reports/ReportSummaryStrip';
-import { ExportRegistrationsButton } from '../../features/reports/ExportRegistrationsButton';
+import { ExportButtons } from '../../features/reports/ExportButtons';
 import { toast } from '../../lib/toast';
+import { Badge } from '../../components/ui/Badge';
 import { Button } from '../../components/ui/Button';
 import { Field, Input } from '../../components/ui/Field';
 import { CenteredSpinner } from '../../components/ui/Spinner';
 import { ErrorState } from '../../components/ui/states';
-import { formatDateTime } from '../../utils/datetime';
 
 const TABS = [
-  { key: 'qr', label: 'Quét QR' },
-  { key: 'code', label: 'Nhập mã' },
-  { key: 'list', label: 'Danh sách' },
+  { key: 'qr', label: 'Quét QR', icon: ScanLine },
+  { key: 'code', label: 'Nhập mã', icon: Ticket },
+  { key: 'list', label: 'Danh sách', icon: Users },
 ];
+
+/** Pill trạng thái cửa sổ check-in: [startAt − 60', endAt]. */
+function windowStatus(event) {
+  const now = Date.now();
+  const start = new Date(event.startAt).getTime();
+  const end = new Date(event.endAt).getTime();
+  if (now < start - 60 * 60000) return { label: 'Chưa mở', tone: 'gray' };
+  if (now > end) return { label: 'Đã đóng', tone: 'gray' };
+  return { label: 'Đang mở', tone: 'green' };
+}
 
 /**
  * Màn hình check-in của Organizer (A35) — mobile-first.
@@ -29,10 +40,10 @@ export function CheckinPage() {
   const { data: event, isPending, isError, error, refetch } = useEvent(eventId);
 
   const actions = useCheckInActions(eventId);
+  const undo = useUndoCheckIn(eventId);
   const [tab, setTab] = useState('qr');
   const [result, setResult] = useState(null);
 
-  // Gom kết quả từ mọi cơ chế: hiện banner + toast theo error.code.
   const handleResult = (r) => {
     setResult(r);
     if (r.ok) toast.success(`Đã check-in: ${r.checkIn.student.fullName}`);
@@ -42,46 +53,64 @@ export function CheckinPage() {
   if (isPending) return <CenteredSpinner label="Đang tải sự kiện…" />;
   if (isError) return <ErrorState error={error} onRetry={refetch} />;
 
+  const pill = windowStatus(event);
+
   return (
     <div className="mx-auto max-w-md">
-      <Link to={`/manage/events/${eventId}`} className="text-sm text-brand-600 hover:underline">
-        ← Về chi tiết sự kiện
-      </Link>
-
-      <div className="mt-2">
-        <h1 className="text-lg font-semibold text-slate-800">Check-in</h1>
-        <p className="text-sm text-slate-500">{event.title}</p>
-        <p className="mt-0.5 text-xs text-slate-400">
-          Cửa sổ check-in: từ 60 phút trước {formatDateTime(event.startAt)} đến{' '}
-          {formatDateTime(event.endAt)}
-        </p>
+      {/* Top bar */}
+      <div className="flex items-center gap-3 border-b border-slate-200 pb-3">
+        <Link
+          to={`/manage/events/${eventId}`}
+          aria-label="Về chi tiết sự kiện"
+          className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full text-slate-600 hover:bg-slate-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-400"
+        >
+          <ArrowLeft size={22} aria-hidden="true" />
+        </Link>
+        <div className="min-w-0 flex-1">
+          <h1 className="text-base font-semibold text-slate-900">Check-in</h1>
+          <p className="truncate text-xs text-slate-500">{event.title}</p>
+        </div>
+        <Badge tone={pill.tone} dot={pill.tone === 'green'}>
+          {pill.label}
+        </Badge>
       </div>
 
-      <div className="mt-4 space-y-3">
+      {/* Thống kê B1 */}
+      <div className="mt-4">
         <ReportSummaryStrip eventId={eventId} />
-        <div className="flex justify-end">
-          <ExportRegistrationsButton eventId={eventId} />
-        </div>
       </div>
 
       {/* Tabs */}
-      <div className="mt-4 flex gap-1 rounded-xl bg-slate-100 p-1 text-sm">
-        {TABS.map((t) => (
-          <button
-            key={t.key}
-            onClick={() => setTab(t.key)}
-            className={`flex-1 rounded-lg py-2 font-medium transition-colors ${
-              tab === t.key ? 'bg-white text-brand-600 shadow-sm' : 'text-slate-500'
-            }`}
-          >
-            {t.label}
-          </button>
-        ))}
+      <div className="mt-4 flex gap-1 rounded-xl bg-slate-100 p-1">
+        {TABS.map((t) => {
+          const Icon = t.icon;
+          const active = tab === t.key;
+          return (
+            <button
+              key={t.key}
+              type="button"
+              onClick={() => setTab(t.key)}
+              className={`flex flex-1 items-center justify-center gap-1.5 rounded-lg py-2 text-[13px] font-semibold transition-colors ${
+                active ? 'bg-white text-brand-700 shadow-e1' : 'text-slate-500'
+              }`}
+            >
+              <Icon size={16} aria-hidden="true" />
+              {t.label}
+            </button>
+          );
+        })}
       </div>
 
       <div className="mt-4 space-y-4">
         {tab !== 'list' && (
-          <CheckinResultBanner result={result} onDismiss={() => setResult(null)} />
+          <CheckinResultBanner
+            result={result}
+            onDismiss={() => setResult(null)}
+            onUndo={(registrationId) =>
+              undo.mutate(registrationId, { onSuccess: () => setResult(null) })
+            }
+            undoPending={undo.isPending}
+          />
         )}
 
         {tab === 'qr' && (
@@ -96,17 +125,16 @@ export function CheckinPage() {
           />
         )}
 
-        {tab === 'code' && (
-          <CodeEntry mutation={actions.code} onResult={handleResult} />
-        )}
+        {tab === 'code' && <CodeEntry mutation={actions.code} onResult={handleResult} />}
 
         {tab === 'list' && (
-          <CheckinRoster
-            eventId={eventId}
-            manualMutation={actions.manual}
-            onResult={handleResult}
-          />
+          <CheckinRoster eventId={eventId} manualMutation={actions.manual} onResult={handleResult} />
         )}
+      </div>
+
+      {/* Export CSV */}
+      <div className="mt-6 border-t border-slate-200 pt-4">
+        <ExportButtons eventId={eventId} />
       </div>
     </div>
   );
@@ -138,11 +166,11 @@ function CodeEntry({ mutation, onResult }) {
           onChange={(e) => setValue(e.target.value)}
           placeholder="K7Q2-M9XD"
           autoCapitalize="characters"
-          className="text-center font-mono text-lg tracking-widest"
+          className="text-center font-mono text-lg tracking-[0.3em]"
           inputMode="text"
         />
       </Field>
-      <Button type="submit" className="w-full" loading={mutation.isPending} disabled={!valid}>
+      <Button type="submit" size="lg" className="w-full" loading={mutation.isPending} disabled={!valid}>
         Check-in
       </Button>
     </form>

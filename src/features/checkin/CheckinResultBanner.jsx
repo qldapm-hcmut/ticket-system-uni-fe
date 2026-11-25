@@ -1,23 +1,38 @@
+import { CircleCheck, CircleX } from 'lucide-react';
 import { messageForError } from '../../constants/errorMessages';
-import { formatDateTime } from '../../utils/datetime';
+import { Button } from '../../components/ui/Button';
+import { formatDateTime, timeRange } from '../../utils/datetime';
 
 /**
- * Banner kết quả lần check-in gần nhất (dùng cho tab Quét QR / Nhập mã).
- * Lỗi hiển thị theo error.code; riêng ALREADY_CHECKED_IN hiện thêm chi tiết từ details.
+ * Banner kết quả lần check-in gần nhất.
+ * Lỗi hiển thị theo error.code; ALREADY_CHECKED_IN hiện thêm chi tiết từ details.
+ * Thành công có nút Hoàn tác (C3).
  */
-export function CheckinResultBanner({ result, onDismiss }) {
+export function CheckinResultBanner({ result, onDismiss, onUndo, undoPending }) {
   if (!result) return null;
 
   if (result.ok) {
-    const s = result.checkIn.student;
+    const c = result.checkIn;
     return (
-      <Shell tone="success" onDismiss={onDismiss}>
-        <p className="font-semibold">✓ Đã check-in</p>
-        <p>
-          {s.fullName} · {s.studentCode}
-        </p>
-        <p className="text-xs opacity-80">Phương thức: {result.checkIn.method}</p>
-      </Shell>
+      <div className="flex items-start gap-3 rounded-card border border-emerald-200 bg-emerald-50 px-4 py-3">
+        <CircleCheck size={24} className="mt-0.5 shrink-0 text-emerald-600" aria-hidden="true" />
+        <div className="min-w-0 flex-1">
+          <p className="text-[13px] font-semibold text-emerald-700">
+            Đã check-in: {c.student.fullName}
+          </p>
+          <p className="text-xs text-emerald-700/80">
+            {c.student.studentCode} · {timeRange(c.checkedInAt)} · {c.method}
+          </p>
+        </div>
+        <Button
+          variant="ghost"
+          size="sm"
+          loading={undoPending}
+          onClick={() => onUndo?.(c.registrationId)}
+        >
+          Hoàn tác
+        </Button>
+      </div>
     );
   }
 
@@ -30,29 +45,19 @@ export function CheckinResultBanner({ result, onDismiss }) {
       : null;
 
   return (
-    <Shell tone="error" onDismiss={onDismiss}>
-      <p className="font-semibold">✕ Không check-in được</p>
-      <p>{messageForError(err)}</p>
-      {detail && <p className="text-xs opacity-80">{detail}</p>}
-    </Shell>
-  );
-}
-
-function Shell({ tone, children, onDismiss }) {
-  const cls =
-    tone === 'success'
-      ? 'border-emerald-200 bg-emerald-50 text-emerald-800'
-      : 'border-red-200 bg-red-50 text-red-800';
-  return (
-    <div className={`relative rounded-xl border p-4 text-sm ${cls}`}>
+    <div className="flex items-start gap-3 rounded-card border border-red-200 bg-red-50 px-4 py-3">
+      <CircleX size={24} className="mt-0.5 shrink-0 text-red-600" aria-hidden="true" />
+      <div className="min-w-0 flex-1">
+        <p className="text-[13px] font-semibold text-red-700">{messageForError(err)}</p>
+        {detail && <p className="text-xs text-red-700/80">{detail}</p>}
+      </div>
       <button
         onClick={onDismiss}
-        className="absolute right-2 top-2 text-current/60 hover:text-current"
+        className="shrink-0 text-red-400 hover:text-red-600"
         aria-label="Đóng"
       >
         ✕
       </button>
-      {children}
     </div>
   );
 }
