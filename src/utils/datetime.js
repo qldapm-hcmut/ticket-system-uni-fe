@@ -84,18 +84,26 @@ export function hhmmMinus(iso, minutes) {
  * Khoảng "tuần này" theo giờ VN: Thứ Hai 00:00:00 → Chủ Nhật 23:59:59, ISO có offset +07:00.
  * Giả định máy chạy theo giờ VN (Asia/Ho_Chi_Minh) — đúng với môi trường đồ án.
  */
-export function weekRangeVN() {
-  const now = new Date();
-  const day = now.getDay(); // 0=CN..6=T7
-  const diffToMon = day === 0 ? -6 : 1 - day;
-  const mon = new Date(now);
-  mon.setDate(now.getDate() + diffToMon);
-  const sun = new Date(mon);
-  sun.setDate(mon.getDate() + 6);
+const VN_OFFSET_MIN = 7 * 60; // Asia/Ho_Chi_Minh = UTC+7, không có DST
+
+/**
+ * Khoảng "tuần này" theo giờ VN: Thứ Hai 00:00:00 → Chủ Nhật 23:59:59, ISO offset +07:00.
+ * Hàm thuần, KHÔNG phụ thuộc múi giờ máy: quy mọi thứ về UTC+7 bằng toán trên epoch (getTime/getUTC*).
+ * @param {Date} [now=new Date()]
+ */
+export function weekRangeVN(now = new Date()) {
+  // Dịch epoch sang "đồng hồ VN": đọc bằng getUTC* sẽ ra ngày/giờ VN.
+  const vn = new Date(now.getTime() + VN_OFFSET_MIN * 60000);
+  const dow = vn.getUTCDay(); // 0=CN..6=T7 theo giờ VN
+  const diffToMon = dow === 0 ? -6 : 1 - dow;
+  const mon = new Date(vn.getTime() + diffToMon * 86400000);
+  const sun = new Date(mon.getTime() + 6 * 86400000);
   const pad = (n) => String(n).padStart(2, '0');
-  const fmt = (d, t) =>
-    `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${t}+07:00`;
-  return { from: fmt(mon, '00:00:00'), to: fmt(sun, '23:59:59') };
+  const dateVN = (d) => `${d.getUTCFullYear()}-${pad(d.getUTCMonth() + 1)}-${pad(d.getUTCDate())}`;
+  return {
+    from: `${dateVN(mon)}T00:00:00+07:00`,
+    to: `${dateVN(sun)}T23:59:59+07:00`,
+  };
 }
 
 /** true nếu mốc thời gian đã qua. */
