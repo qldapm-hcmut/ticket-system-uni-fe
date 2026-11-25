@@ -17,7 +17,7 @@ export function Modal({ open, onClose, title, children, footer }) {
       <div
         role="dialog"
         aria-modal="true"
-        className="relative z-10 w-full max-w-md rounded-xl bg-white shadow-xl"
+        className="relative z-10 w-full max-w-md rounded-2xl bg-white shadow-e2"
       >
         <div className="flex items-center justify-between border-b border-slate-200 px-5 py-3">
           <h3 className="font-semibold text-slate-800">{title}</h3>
