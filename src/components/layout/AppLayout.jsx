@@ -2,6 +2,7 @@ import { NavLink, Outlet, Link } from 'react-router-dom';
 import { useAuth } from '../../features/auth/AuthContext';
 import { ROLES } from '../../constants/roles';
 import { Button } from '../ui/Button';
+import { BrandLogo } from '../ui/BrandLogo';
 
 function navClass({ isActive }) {
   return `rounded-lg px-3 py-2 text-sm font-medium transition-colors ${
@@ -17,9 +18,9 @@ export function AppLayout() {
     <div className="min-h-full">
       <header className="sticky top-0 z-30 border-b border-slate-200 bg-white/90 backdrop-blur">
         <div className="mx-auto flex max-w-6xl items-center gap-4 px-4 py-3">
-          <Link to="/events" className="flex items-center gap-2 font-semibold text-brand-600">
-            <span className="text-xl">🎟️</span>
-            <span className="hidden sm:inline">HCMUT Events</span>
+          <Link to="/events" aria-label="HCMUT Events — Trang chủ">
+            <BrandLogo size={32} withText className="hidden sm:inline-flex" />
+            <BrandLogo size={32} className="sm:hidden" />
           </Link>
 
           <nav className="flex flex-1 items-center gap-1 overflow-x-auto">

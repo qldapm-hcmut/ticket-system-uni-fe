@@ -8,6 +8,7 @@ import { env } from '../config/env';
 import { setTokens } from '../utils/tokenStorage';
 import { Button } from '../components/ui/Button';
 import { Field, Input, Textarea } from '../components/ui/Field';
+import { BrandLogo } from '../components/ui/BrandLogo';
 import { toast } from '../lib/toast';
 
 export function LoginPage() {
@@ -35,7 +36,7 @@ export function LoginPage() {
     <div className="flex min-h-screen items-center justify-center px-4">
       <div className="w-full max-w-md rounded-2xl border border-slate-200 bg-white p-8 shadow-sm">
         <div className="mb-6 text-center">
-          <div className="mb-2 text-4xl">🎟️</div>
+          <BrandLogo size={56} className="mb-2 justify-center" />
           <h1 className="text-xl font-semibold text-slate-800">HCMUT Events</h1>
           <p className="mt-1 text-sm text-slate-500">
             Đăng nhập bằng tài khoản trường (@hcmut.edu.vn)
