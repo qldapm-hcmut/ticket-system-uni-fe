@@ -3,36 +3,52 @@
 Frontend cho **Hệ thống đăng ký sự kiện trường** (CO3011 — Nhóm 09).
 Vite + React + TailwindCSS v4 + TanStack Query + Axios.
 
-> **Nguồn sự thật (SSOT):** [`docs/openapi.yaml`](docs/openapi.yaml). Mọi thay đổi API bám theo file này.
-> Backend chạy local từ repo `ticket-system-uni.git` (mặc định `http://localhost:3000/api/v1`).
+> Contract chuẩn nằm trong `api/openapi.yaml` của repo `ticket-system-uni-be`.
 
 ## Chạy dự án
 
 ```bash
-npm install
-cp .env.example .env   # sửa lại nếu cần
-npm run dev            # http://localhost:5173
-npm run build          # build production
-npm run preview        # xem thử bản build
+npm ci
+cp .env.example .env
+npm run dev
 ```
+
+Chạy PostgreSQL, migration và API theo README của repo `ticket-system-uni-be`.
+Với backend `AUTH_MODE=local`, chạy `make dev-token ROLE=student` (hoặc `organizer`, `admin`)
+trong repo backend, rồi dán access token vào tab **Dán token trực tiếp**. Refresh token để trống.
+Kiểm tra `http://localhost:3000/health/ready`, rồi mở `http://localhost:5173`.
+
+Khi dùng Google thật, đặt backend `AUTH_MODE=google`, dùng cùng Google OAuth Client ID trong
+`GOOGLE_CLIENT_ID` của backend và `VITE_GOOGLE_CLIENT_ID` của frontend. Thêm
+`http://localhost:5173` vào Authorized JavaScript origins của OAuth client.
+
+Vite chuyển tiếp `/api/v1` đến API ở cổng 3000. Khi dùng `npm run build` để triển khai,
+cấu hình web server chuyển tiếp `/api/v1` đến backend và phục vụ `index.html` cho các route React.
+
+Để chạy cả hệ thống bằng Docker và mở cho điện thoại cùng mạng, dùng
+`docker compose -f compose.yaml -f compose.host.yaml up -d --build --wait` từ repo backend
+đặt cạnh repo này. Frontend dùng Nginx ở cổng mặc định `5174`; hướng dẫn HTTPS cho camera
+nằm trong README backend.
 
 ### Biến môi trường (`.env`)
 
 | Biến                    | Ý nghĩa                                                             |
 | ----------------------- | ------------------------------------------------------------------ |
-| `VITE_API_BASE_URL`     | Base URL backend (mặc định `http://localhost:3000/api/v1`).        |
+| `API_PROXY_TARGET`     | Origin backend cho Vite (mặc định `http://127.0.0.1:3000`).       |
+| `VITE_API_BASE_URL`     | Base URL API phía trình duyệt (mặc định `/api/v1`).               |
 | `VITE_GOOGLE_CLIENT_ID` | Google OAuth Client ID cho nút đăng nhập Google. Trống = ẩn nút.   |
 | `VITE_ENABLE_DEV_LOGIN` | `true` để hiện panel đăng nhập dev (dán token) khi test với local. |
 
 ## Đăng nhập (A26)
 
-Backend chỉ nhận **Google ID token** qua `POST /auth/google` (yêu cầu domain `hcmut.edu.vn`).
+API dùng access token nội bộ cho các request đã đăng nhập.
+Với `AUTH_MODE=google`, `POST /auth/google` đổi Google ID token của trường lấy phiên nội bộ.
 Màn đăng nhập hỗ trợ:
 
 1. **Nút Google thật** (Google Identity Services) — khi đã cấu hình `VITE_GOOGLE_CLIENT_ID`.
 2. **Panel dev** (bật bằng `VITE_ENABLE_DEV_LOGIN=true`):
    - Dán **Google ID token** → gửi lên `/auth/google` như nút thật, hoặc
-   - Dán thẳng **access/refresh token** (tiện khi backend local seed sẵn token).
+   - Dán **access token** từ lệnh `make dev-token` của backend local. Refresh token tùy chọn.
 
 ## Kiến trúc
 
@@ -77,6 +93,6 @@ src/
 | A27  | Danh sách/chi tiết sự kiện                        | ✅         |
 | A27  | Organizer tạo/sửa/gửi duyệt; Admin duyệt/từ chối  | ✅         |
 | A29  | Sinh viên đăng ký/hủy, "Đăng ký của tôi"          | ✅         |
-| —    | QR code trong vé (R4)                             | ⏳ box trống, nối thư viện QR sau |
-| —    | Check-in (C1–C3), báo cáo (B1–B2), thông báo (N1–N2) | ⏳ ngoài phạm vi W11 |
-```
+| A35  | Vé QR, check-in (C1–C3), báo cáo và tải CSV         | ✅         |
+
+API hiện hỗ trợ xuất CSV. Chức năng xóa nháp cần endpoint ở backend.
