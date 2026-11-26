@@ -378,6 +378,7 @@ paths:
                     type: array
                     items: { $ref: '#/components/schemas/Event' }
                   meta: { $ref: '#/components/schemas/PageMeta' }
+        '400': { $ref: '#/components/responses/ValidationError' }
         '401': { $ref: '#/components/responses/Unauthenticated' }
     post:
       tags: [Events]
@@ -525,9 +526,17 @@ paths:
       tags: [Events]
       operationId: cancelEvent
       summary: E7 — Hủy sự kiện đã công bố
-      description: PUBLISHED → CANCELLED; mọi REGISTERED/WAITLISTED → CANCELLED_BY_EVENT và nhận notification.
+      description: |
+        Organizer thuộc đơn vị active: PUBLISHED → CANCELLED; mọi REGISTERED/WAITLISTED
+        → CANCELLED_BY_EVENT và nhận notification. Counter về 0, audit CANCEL_EVENT
+        và notification commit cùng transaction. Admin không tự có quyền hủy.
+        If-Match tùy chọn; nếu có phải khớp version hiện tại.
       parameters:
         - $ref: '#/components/parameters/EventId'
+        - name: If-Match
+          in: header
+          required: false
+          schema: { type: integer, minimum: 1 }
       requestBody:
         required: true
         content:
@@ -552,6 +561,7 @@ paths:
                     required: [affectedCount]
                     properties:
                       affectedCount: { type: integer, minimum: 0 }
+        '400': { $ref: '#/components/responses/ValidationError' }
         '401': { $ref: '#/components/responses/Unauthenticated' }
         '403': { $ref: '#/components/responses/Forbidden' }
         '404': { $ref: '#/components/responses/NotFound' }
@@ -563,6 +573,7 @@ paths:
       tags: [Approval]
       operationId: submitEvent
       summary: P1 — Gửi duyệt (DRAFT/REJECTED → PENDING_APPROVAL)
+      description: Kiểm tra lại lịch; startAt và registrationClosesAt phải ở tương lai. Lỗi trả 422 VALIDATION_ERROR kèm details.fields.
       parameters:
         - $ref: '#/components/parameters/EventId'
       responses:
@@ -579,6 +590,8 @@ paths:
         '403': { $ref: '#/components/responses/Forbidden' }
         '404': { $ref: '#/components/responses/NotFound' }
         '409': { $ref: '#/components/responses/Conflict' }
+
+        '422': { $ref: '#/components/responses/BusinessRuleViolation' }
 
   /approvals/pending:
     get:
@@ -609,7 +622,10 @@ paths:
     post:
       tags: [Approval]
       operationId: approveEvent
-      description: Admin là quản trị viên cấp trường; không yêu cầu membership đơn vị.
+      description: >-
+        Admin là quản trị viên cấp trường; không yêu cầu membership đơn vị.
+        Kiểm tra lại lịch; startAt và registrationClosesAt phải ở tương lai.
+        Lỗi trả 422 VALIDATION_ERROR kèm details.fields.
       summary: P3 — Duyệt và công bố (Admin, không phải người tạo)
       parameters:
         - $ref: '#/components/parameters/EventId'
@@ -679,6 +695,7 @@ paths:
       tags: [Approval]
       operationId: listApprovalLogs
       summary: P5 — Lịch sử submit/approve/reject
+      description: Organizer thuộc đơn vị active hoặc Admin. Chỉ audit SUBMIT/APPROVE/REJECT, tăng dần theo createdAt và id; không phân trang.
       parameters:
         - $ref: '#/components/parameters/EventId'
       responses:
@@ -746,6 +763,11 @@ paths:
       tags: [Registrations]
       operationId: listEventRegistrations
       summary: R5 — Danh sách đăng ký / waitlist của sự kiện (Organizer, Admin)
+      description: |
+        Organizer thuộc đơn vị active hoặc Admin. Sắp queueSeq tăng dần, id làm tie-break.
+        WAITLISTED quá startAt được trả EXPIRED dù worker chưa chạy.
+        waitlistPosition là vị trí trong toàn bộ waitlist còn hiệu lực, trước khi lọc q/phân trang.
+        q tìm chuỗi literal không phân biệt hoa thường theo tên/MSSV, tối đa 200 bytes. Response no-store.
       parameters:
         - $ref: '#/components/parameters/EventId'
         - name: status
@@ -772,6 +794,7 @@ paths:
                   meta: { $ref: '#/components/schemas/PageMeta' }
         '401': { $ref: '#/components/responses/Unauthenticated' }
         '404': { $ref: '#/components/responses/NotFound' }
+        '400': { $ref: '#/components/responses/ValidationError' }
 
   /registrations/{registrationId}:
     get:
@@ -914,6 +937,7 @@ paths:
       tags: [Check-in]
       operationId: listCheckIns
       summary: C2 — Danh sách đã check-in (Organizer, Admin)
+      description: Organizer thuộc đơn vị active hoặc Admin; sắp checkedInAt DESC, registrationId DESC. Undo biến mất khỏi danh sách; giữ lịch sử check-in còn lưu của event bị hủy. Response no-store.
       parameters:
         - $ref: '#/components/parameters/EventId'
         - name: method
@@ -936,6 +960,7 @@ paths:
                   meta: { $ref: '#/components/schemas/PageMeta' }
         '401': { $ref: '#/components/responses/Unauthenticated' }
         '404': { $ref: '#/components/responses/NotFound' }
+        '400': { $ref: '#/components/responses/ValidationError' }
 
   /registrations/{registrationId}/check-in:
     delete:
@@ -977,11 +1002,11 @@ paths:
     get:
       tags: [Reports]
       operationId: exportEventData
-      summary: B2 — Xuất danh sách đăng ký / điểm danh ra CSV hoặc XLSX
+      summary: B2 — Xuất danh sách đăng ký / điểm danh ra CSV
       description: |
         Trả file trực tiếp với `Content-Disposition: attachment`. CSV có BOM UTF-8 để Excel đọc đúng tiếng Việt.
         Cột `attendance`: STT, MSSV, Họ tên, Email, Trạng thái đăng ký, Thời gian check-in, Phương thức.
-        Mỗi lần xuất được ghi audit log.
+        Mỗi lần xuất được ghi audit log trước khi trả file. Hiện hỗ trợ CSV; XLSX để giai đoạn sau.
       parameters:
         - $ref: '#/components/parameters/EventId'
         - name: kind
@@ -994,20 +1019,19 @@ paths:
           in: query
           schema:
             type: string
-            enum: [csv, xlsx]
-            default: xlsx
+            enum: [csv]
+            default: csv
       responses:
         '200':
           description: File
           headers:
             Content-Disposition:
               schema: { type: string }
-              example: attachment; filename="attendance_e7a1c2d4.xlsx"
+              example: attachment; filename="attendance.csv"
           content:
             text/csv:
               schema: { type: string }
-            application/vnd.openxmlformats-officedocument.spreadsheetml.sheet:
-              schema: { type: string, contentMediaType: application/vnd.openxmlformats-officedocument.spreadsheetml.sheet }
+        '400': { $ref: '#/components/responses/ValidationError' }
         '401': { $ref: '#/components/responses/Unauthenticated' }
         '404': { $ref: '#/components/responses/NotFound' }
 
@@ -1017,6 +1041,10 @@ paths:
       tags: [Notifications]
       operationId: listMyNotifications
       summary: N1 — Thông báo in-app
+      description: |
+        Chỉ thông báo của user hiện tại; sắp xếp createdAt DESC, id DESC.
+        unreadCount là tổng chưa đọc của user, totalItems theo bộ lọc.
+        Frontend poll mỗi 10 giây khi tab hiển thị; response no-store.
       parameters:
         - name: unread
           in: query
@@ -1042,6 +1070,7 @@ paths:
                         required: [unreadCount]
                         properties:
                           unreadCount: { type: integer, minimum: 0 }
+        '400': { $ref: '#/components/responses/ValidationError' }
         '401': { $ref: '#/components/responses/Unauthenticated' }
 
   /me/notifications/read:
@@ -1049,6 +1078,9 @@ paths:
       tags: [Notifications]
       operationId: markNotificationsRead
       summary: N2 — Đánh dấu đã đọc
+      description: |
+        Idempotent, chỉ cập nhật thông báo chưa đọc của user hiện tại.
+        ID không tồn tại hoặc thuộc user khác bị bỏ qua. Không đổi trạng thái email.
       requestBody:
         required: true
         content:
@@ -1056,13 +1088,16 @@ paths:
             schema:
               oneOf:
                 - type: object
+                  additionalProperties: false
                   required: [ids]
                   properties:
                     ids:
                       type: array
                       minItems: 1
+                      maxItems: 100
                       items: { type: string, format: uuid }
                 - type: object
+                  additionalProperties: false
                   required: [all]
                   properties:
                     all: { type: boolean, const: true }
@@ -1356,7 +1391,9 @@ components:
       type: object
       required: [unitId, title, location, startAt, endAt, registrationOpensAt, registrationClosesAt, capacity]
       description: |
-        Ràng buộc: endAt > startAt; registrationOpensAt < registrationClosesAt <= startAt; startAt ở tương lai.
+        Ràng buộc: endAt > startAt; registrationOpensAt < registrationClosesAt <= startAt;
+        startAt và registrationClosesAt phải sau thời điểm hiện tại. registrationOpensAt có thể ở quá khứ.
+        Lỗi ngày trả VALIDATION_ERROR kèm details.fields.
       properties:
         unitId: { type: string, format: uuid }
         title: { type: string, minLength: 1, maxLength: 200 }
@@ -1374,7 +1411,10 @@ components:
     EventUpdate:
       type: object
       minProperties: 1
-      description: Tập con các field của EventCreate (không đổi được unitId)
+      description: >-
+        Tập con các field của EventCreate (không đổi được unitId).
+        DRAFT/REJECTED yêu cầu registrationClosesAt ở tương lai.
+        PUBLISHED được giữ nguyên hạn đã qua khi sửa field khác; nếu đổi hạn thì hạn mới phải ở tương lai.
       properties:
         title: { type: string, minLength: 1, maxLength: 200 }
         description: { type: [string, 'null'] }

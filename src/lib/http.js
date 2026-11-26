@@ -21,8 +21,8 @@ export const http = axios.create({
   headers: { 'Content-Type': 'application/json' },
 });
 
-// Các endpoint auth không cần/không nên chèn access token hoặc refresh-retry.
-const AUTH_PATHS = ['/auth/google', '/auth/refresh', '/auth/logout'];
+// Login và refresh không dùng access token.
+const AUTH_PATHS = ['/auth/google', '/auth/refresh'];
 function isAuthPath(url = '') {
   return AUTH_PATHS.some((p) => url.includes(p));
 }
@@ -32,6 +32,9 @@ http.interceptors.request.use((config) => {
   const token = getAccessToken();
   if (token && !isAuthPath(config.url)) {
     config.headers.Authorization = `Bearer ${token}`;
+  }
+  if (config.url === '/auth/logout') {
+    config.data = { refreshToken: getRefreshToken() };
   }
   return config;
 });
