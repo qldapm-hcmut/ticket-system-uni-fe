@@ -27,11 +27,9 @@ export function useApproveEvent() {
   const qc = useQueryClient();
   return useMutation({
     mutationFn: ({ eventId, comment }) => api.approveEvent(eventId, comment),
-    onSuccess: (_result, { eventId }) => {
+    onSuccess: (event) => {
       toast.success('Đã duyệt và công bố sự kiện.');
-      qc.invalidateQueries({ queryKey: qk.event(eventId) });
-      qc.invalidateQueries({ queryKey: qk.approvalLogs(eventId) });
-      qc.invalidateQueries({ queryKey: ['events'] });
+      qc.setQueryData(qk.event(event.id), event);
       qc.invalidateQueries({ queryKey: ['pending-approvals'] });
       qc.invalidateQueries({ queryKey: ['managed-events'] });
     },
@@ -44,11 +42,9 @@ export function useRejectEvent() {
   return useMutation({
     mutationFn: ({ eventId, reason }) => api.rejectEvent(eventId, reason),
     meta: { skipGlobalError: true },
-    onSuccess: (_result, { eventId }) => {
+    onSuccess: (event) => {
       toast.success('Đã từ chối sự kiện.');
-      qc.invalidateQueries({ queryKey: qk.event(eventId) });
-      qc.invalidateQueries({ queryKey: qk.approvalLogs(eventId) });
-      qc.invalidateQueries({ queryKey: ['managed-events'] });
+      qc.setQueryData(qk.event(event.id), event);
       qc.invalidateQueries({ queryKey: ['pending-approvals'] });
     },
   });

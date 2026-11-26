@@ -5,6 +5,7 @@ import {
   useCreateEvent,
   useUpdateEvent,
   useSubmitEvent,
+  useDeleteEvent,
   useCancelEvent,
 } from '../../features/events/useEvents';
 import { useAuth } from '../../features/auth/AuthContext';
@@ -19,9 +20,6 @@ import { CenteredSpinner } from '../../components/ui/Spinner';
 import { ErrorState } from '../../components/ui/states';
 import { toDatetimeLocalValue, toIsoWithOffset } from '../../utils/datetime';
 import { ApprovalLogs } from '../../features/events/ApprovalLogs';
-import { validateEventForm } from '../../features/events/eventValidation';
-import { messageForError } from '../../constants/errorMessages';
-import { ExportRegistrationsButton } from '../../features/reports/ExportRegistrationsButton';
 
 const EMPTY = {
   unitId: '',
@@ -50,24 +48,16 @@ function CreateEventForm() {
   const { user } = useAuth();
   const create = useCreateEvent();
   const [form, setForm] = useState(EMPTY);
-  const [clientErrors, setClientErrors] = useState({});
-  const errors = { ...fieldErrorsFrom(create.error), ...clientErrors };
-  const changeForm = (next) => {
-    setForm(next);
-    setClientErrors({});
-    create.reset();
-  };
+  const serverErrors = fieldErrorsFrom(create.error);
 
   // Organizer chọn trong các đơn vị được gán.
   const unitOptions = user?.units?.map((u) => u.unit) ?? [];
 
   const submit = (e) => {
     e.preventDefault();
-    const clientErr = validateEventForm(form, { requireUnit: true });
-    setClientErrors(clientErr);
-    if (Object.keys(clientErr).length) return toast.error(Object.values(clientErr)[0]);
+    const clientErr = validateDraft(form);
+    if (clientErr) return toast.error(clientErr);
     create.mutate(toPayload(form), {
-      onError: (err) => toast.apiError(err),
       onSuccess: (ev) => {
         toast.success('Đã tạo sự kiện nháp.');
         navigate(`/manage/events/${ev.id}`);
@@ -88,13 +78,11 @@ function CreateEventForm() {
           được thêm vào một đơn vị.
         </p>
       ) : (
-        <form noValidate onSubmit={submit} className="mt-4 space-y-4">
-          {create.isError && <p role="alert" className="rounded-lg bg-red-50 p-3 text-sm text-red-700">{messageForError(create.error)}</p>}
-          <Field label="Đơn vị tổ chức" htmlFor="event-unitId" required error={errors.unitId}>
+        <form onSubmit={submit} className="mt-4 space-y-4">
+          <Field label="Đơn vị tổ chức" required error={serverErrors.unitId}>
             <Select
-              id="event-unitId"
               value={form.unitId}
-              onChange={(e) => changeForm({ ...form, unitId: e.target.value })}
+              onChange={(e) => setForm({ ...form, unitId: e.target.value })}
             >
               <option value="">— Chọn đơn vị —</option>
               {unitOptions.map((u) => (
@@ -105,7 +93,7 @@ function CreateEventForm() {
             </Select>
           </Field>
 
-          <EventFields form={form} setForm={changeForm} serverErrors={errors} />
+          <EventFields form={form} setForm={setForm} serverErrors={serverErrors} />
 
           <div className="flex justify-end gap-2 pt-2">
             <Button type="submit" loading={create.isPending}>
@@ -120,23 +108,19 @@ function CreateEventForm() {
 
 /* ----------------------------- Chỉnh sửa ----------------------------- */
 function EditEventForm({ eventId }) {
-  const { user, hasRole } = useAuth();
+  const navigate = useNavigate();
+  const { hasRole } = useAuth();
   const { data: event, isPending, isError, error, refetch } = useEvent(eventId);
 
   const update = useUpdateEvent(eventId);
   const submitApproval = useSubmitEvent();
+  const del = useDeleteEvent();
   const cancel = useCancelEvent();
 
   const [form, setForm] = useState(null);
+  const [confirmDelete, setConfirmDelete] = useState(false);
   const [confirmCancel, setConfirmCancel] = useState(false);
   const [cancelReason, setCancelReason] = useState('');
-  const [clientErrors, setClientErrors] = useState({});
-  const changeForm = (next) => {
-    setForm(next);
-    setClientErrors({});
-    update.reset();
-    submitApproval.reset();
-  };
 
   // Nạp dữ liệu vào form khi event đã tải xong.
   const initial = useMemo(() => (event ? eventToForm(event) : null), [event]);
@@ -145,34 +129,20 @@ function EditEventForm({ eventId }) {
   if (isPending) return <CenteredSpinner label="Đang tải sự kiện…" />;
   if (isError) return <ErrorState error={error} onRetry={refetch} />;
 
-  const serverErrors = { ...fieldErrorsFrom(submitApproval.error), ...fieldErrorsFrom(update.error), ...clientErrors };
+  const serverErrors = fieldErrorsFrom(update.error);
   const status = event.status;
   const editable = status === EVENT_STATUS.DRAFT || status === EVENT_STATUS.REJECTED || status === EVENT_STATUS.PUBLISHED;
   const canSubmit = status === EVENT_STATUS.DRAFT || status === EVENT_STATUS.REJECTED;
+  const canDelete = status === EVENT_STATUS.DRAFT;
   const canCancel = status === EVENT_STATUS.PUBLISHED;
-  const canExport = hasRole(ROLES.ADMIN) || (
-    hasRole(ROLES.ORGANIZER) && user?.units?.some(({ unit }) => unit.id === event.unit?.id)
-  );
 
   const save = (e) => {
     e.preventDefault();
-    const clientErr = validateEventForm(current, { initial, published: status === EVENT_STATUS.PUBLISHED });
-    setClientErrors(clientErr);
-    if (Object.keys(clientErr).length) return toast.error(Object.values(clientErr)[0]);
-    // Keep untouched timestamps exactly as stored (datetime-local displays minutes).
-    const body = Object.fromEntries(
-      Object.entries(toPayload(current, { editable: true })).filter(([key]) => current[key] !== initial[key]),
-    );
-    if (!Object.keys(body).length) return toast.info('Chưa có thay đổi để lưu.');
+    const clientErr = validateDraft(current, { partial: true });
+    if (clientErr) return toast.error(clientErr);
     update.mutate(
-      { body, version: event.version },
-      {
-        onError: (err) => toast.apiError(err),
-        onSuccess: () => {
-          setForm(null);
-          toast.success('Đã lưu thay đổi.');
-        },
-      },
+      { body: toPayload(current, { editable: true }), version: event.version },
+      { onSuccess: () => toast.success('Đã lưu thay đổi.') },
     );
   };
 
@@ -187,18 +157,17 @@ function EditEventForm({ eventId }) {
         <EventStatusBadge status={status} />
       </div>
 
-      {/* Export remains available after the event ends, outside the disabled edit form. */}
-      <div className="mt-3 flex flex-wrap items-center gap-2">
-        {canExport && <ExportRegistrationsButton eventId={event.id} />}
-        {hasRole(ROLES.ORGANIZER) && status === EVENT_STATUS.PUBLISHED && (
+      {/* A35: lối vào check-in — chỉ ORGANIZER, khi sự kiện đã công bố */}
+      {hasRole(ROLES.ORGANIZER) && status === EVENT_STATUS.PUBLISHED && (
+        <div className="mt-3">
           <Link
             to={`/manage/events/${event.id}/check-in`}
             className="inline-flex items-center gap-2 rounded-lg bg-brand-500 px-4 py-2 text-sm font-medium text-white hover:bg-brand-600"
           >
             📷 Mở màn hình check-in
           </Link>
-        )}
-      </div>
+        </div>
+      )}
 
       {status === EVENT_STATUS.REJECTED && event.rejectReason && (
         <p className="mt-3 rounded-lg bg-red-50 px-4 py-3 text-sm text-red-700">
@@ -211,14 +180,18 @@ function EditEventForm({ eventId }) {
         </p>
       )}
 
-      <form noValidate onSubmit={save} className="mt-4 space-y-4">
-        {update.isError && <p role="alert" className="rounded-lg bg-red-50 p-3 text-sm text-red-700">{messageForError(update.error)}</p>}
+      <form onSubmit={save} className="mt-4 space-y-4">
         <fieldset disabled={!editable} className="space-y-4">
-          <EventFields form={current} setForm={changeForm} serverErrors={serverErrors} />
+          <EventFields form={current} setForm={setForm} serverErrors={serverErrors} />
         </fieldset>
 
         <div className="flex flex-wrap justify-between gap-2 border-t border-slate-200 pt-4">
           <div className="flex gap-2">
+            {canDelete && (
+              <Button type="button" variant="danger" onClick={() => setConfirmDelete(true)}>
+                Xóa nháp
+              </Button>
+            )}
             {canCancel && (
               <Button type="button" variant="danger" onClick={() => setConfirmCancel(true)}>
                 Hủy sự kiện
@@ -245,15 +218,33 @@ function EditEventForm({ eventId }) {
       </form>
 
       <div className="mt-8">
-        {submitApproval.isError && (
-          <div role="alert" className="mb-4 rounded-lg bg-red-50 p-3 text-sm text-red-700">
-            <p>{messageForError(submitApproval.error)}</p>
-            {Object.entries(fieldErrorsFrom(submitApproval.error)).map(([field, message]) => <p key={field}>{message}</p>)}
-          </div>
-        )}
         <h2 className="mb-2 text-sm font-semibold text-slate-700">Lịch sử duyệt</h2>
         <ApprovalLogs eventId={event.id} />
       </div>
+
+      <Modal
+        open={confirmDelete}
+        onClose={() => setConfirmDelete(false)}
+        title="Xóa sự kiện nháp"
+        footer={
+          <>
+            <Button variant="secondary" onClick={() => setConfirmDelete(false)}>
+              Không
+            </Button>
+            <Button
+              variant="danger"
+              loading={del.isPending}
+              onClick={() =>
+                del.mutate(event.id, { onSuccess: () => navigate('/manage/events') })
+              }
+            >
+              Xóa
+            </Button>
+          </>
+        }
+      >
+        <p className="text-sm text-slate-600">Hành động này không thể hoàn tác.</p>
+      </Modal>
 
       <Modal
         open={confirmCancel}
@@ -301,40 +292,38 @@ function EventFields({ form, setForm, serverErrors }) {
   const set = (key) => (e) => setForm({ ...form, [key]: e.target.value });
   return (
     <>
-      <Field label="Tiêu đề" htmlFor="event-title" required error={serverErrors.title}>
-        <Input id="event-title" value={form.title} onChange={set('title')} maxLength={200} />
+      <Field label="Tiêu đề" required error={serverErrors.title}>
+        <Input value={form.title} onChange={set('title')} maxLength={200} />
       </Field>
       <Field label="Mô tả" error={serverErrors.description}>
         <Textarea rows={4} value={form.description} onChange={set('description')} />
       </Field>
-      <Field label="Địa điểm" htmlFor="event-location" required error={serverErrors.location}>
-        <Input id="event-location" value={form.location} onChange={set('location')} maxLength={255} />
+      <Field label="Địa điểm" required error={serverErrors.location}>
+        <Input value={form.location} onChange={set('location')} maxLength={255} />
       </Field>
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-        <Field label="Bắt đầu" htmlFor="event-startAt" required error={serverErrors.startAt}>
-          <Input id="event-startAt" type="datetime-local" value={form.startAt} onChange={set('startAt')} />
+        <Field label="Bắt đầu" required error={serverErrors.startAt}>
+          <Input type="datetime-local" value={form.startAt} onChange={set('startAt')} />
         </Field>
-        <Field label="Kết thúc" htmlFor="event-endAt" required error={serverErrors.endAt}>
-          <Input id="event-endAt" type="datetime-local" value={form.endAt} onChange={set('endAt')} />
+        <Field label="Kết thúc" required error={serverErrors.endAt}>
+          <Input type="datetime-local" value={form.endAt} onChange={set('endAt')} />
         </Field>
-        <Field label="Mở đăng ký" htmlFor="event-registrationOpensAt" required error={serverErrors.registrationOpensAt}>
+        <Field label="Mở đăng ký" required error={serverErrors.registrationOpensAt}>
           <Input
-            id="event-registrationOpensAt"
             type="datetime-local"
             value={form.registrationOpensAt}
             onChange={set('registrationOpensAt')}
           />
         </Field>
-        <Field label="Đóng đăng ký" htmlFor="event-registrationClosesAt" required error={serverErrors.registrationClosesAt}>
+        <Field label="Đóng đăng ký" required error={serverErrors.registrationClosesAt}>
           <Input
-            id="event-registrationClosesAt"
             type="datetime-local"
             value={form.registrationClosesAt}
             onChange={set('registrationClosesAt')}
           />
         </Field>
-        <Field label="Sức chứa" htmlFor="event-capacity" required error={serverErrors.capacity}>
-          <Input id="event-capacity" type="number" min={1} max={5000} value={form.capacity} onChange={set('capacity')} />
+        <Field label="Sức chứa" required error={serverErrors.capacity}>
+          <Input type="number" min={1} max={5000} value={form.capacity} onChange={set('capacity')} />
         </Field>
         <Field
           label="Giới hạn hàng chờ"
@@ -379,4 +368,21 @@ function toPayload(form, { editable } = {}) {
   // unitId chỉ gửi khi tạo mới (không đổi được khi sửa).
   if (!editable && form.unitId) payload.unitId = form.unitId;
   return payload;
+}
+
+/** Kiểm tra ràng buộc phía client (giảm số lần gọi API trả lỗi). */
+function validateDraft(form) {
+  if (!form.title.trim()) return 'Vui lòng nhập tiêu đề.';
+  if (!form.location.trim()) return 'Vui lòng nhập địa điểm.';
+  const start = new Date(form.startAt);
+  const end = new Date(form.endAt);
+  const regOpen = new Date(form.registrationOpensAt);
+  const regClose = new Date(form.registrationClosesAt);
+  if (form.startAt && form.endAt && end <= start) return 'Thời gian kết thúc phải sau thời gian bắt đầu.';
+  if (form.registrationOpensAt && form.registrationClosesAt && regClose <= regOpen)
+    return 'Thời gian mở đăng ký phải trước thời gian đóng đăng ký.';
+  if (form.registrationClosesAt && form.startAt && regClose > start)
+    return 'Thời gian đóng đăng ký phải trước hoặc bằng lúc bắt đầu.';
+  if (!form.capacity || Number(form.capacity) < 1) return 'Sức chứa phải lớn hơn 0.';
+  return null;
 }

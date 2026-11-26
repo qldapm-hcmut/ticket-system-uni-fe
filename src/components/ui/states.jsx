@@ -1,3 +1,4 @@
+import { Inbox, TriangleAlert } from 'lucide-react';
 import { messageForError } from '../../constants/errorMessages';
 import { isApiError } from '../../lib/apiError';
 import { Button } from './Button';
@@ -5,10 +6,12 @@ import { Button } from './Button';
 /** Trạng thái rỗng (không có dữ liệu). */
 export function EmptyState({ title = 'Chưa có dữ liệu', description, action }) {
   return (
-    <div className="flex flex-col items-center justify-center rounded-xl border border-dashed border-slate-300 bg-white py-14 text-center">
-      <div className="mb-3 text-3xl">📭</div>
-      <p className="font-medium text-slate-700">{title}</p>
-      {description && <p className="mt-1 max-w-sm text-sm text-slate-500">{description}</p>}
+    <div className="flex flex-col items-center justify-center rounded-card border border-dashed border-slate-300 bg-white px-6 py-14 text-center">
+      <span className="mb-3 flex h-12 w-12 items-center justify-center rounded-full bg-slate-100 text-slate-400">
+        <Inbox size={24} aria-hidden="true" />
+      </span>
+      <p className="font-semibold text-slate-700">{title}</p>
+      {description && <p className="mt-1 max-w-sm text-[13px] text-slate-500">{description}</p>}
       {action && <div className="mt-4">{action}</div>}
     </div>
   );
@@ -20,9 +23,11 @@ export function EmptyState({ title = 'Chưa có dữ liệu', description, actio
 export function ErrorState({ error, onRetry }) {
   const message = isApiError(error) ? messageForError(error) : messageForError(undefined);
   return (
-    <div className="flex flex-col items-center justify-center rounded-xl border border-red-200 bg-red-50 py-14 text-center">
-      <div className="mb-3 text-3xl">⚠️</div>
-      <p className="font-medium text-red-700">{message}</p>
+    <div className="flex flex-col items-center justify-center rounded-card border border-red-200 bg-red-50 px-6 py-14 text-center">
+      <span className="mb-3 flex h-12 w-12 items-center justify-center rounded-full bg-red-100 text-red-600">
+        <TriangleAlert size={24} aria-hidden="true" />
+      </span>
+      <p className="font-semibold text-red-700">{message}</p>
       {onRetry && (
         <Button variant="secondary" className="mt-4" onClick={onRetry}>
           Thử lại

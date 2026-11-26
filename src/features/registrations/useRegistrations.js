@@ -40,7 +40,7 @@ export function useRegisterForEvent() {
     mutationFn: (eventId) => api.registerForEvent(eventId),
     onSuccess: (registration) => {
       if (registration.status === REGISTRATION_STATUS.WAITLISTED) {
-        toast.info('Sự kiện đã đầy. Bạn đã vào hàng chờ.');
+        toast.info(`Sự kiện đã đầy. Bạn vào hàng chờ ở vị trí ${registration.waitlistPosition}.`);
       } else {
         toast.success('Đăng ký thành công!');
       }
@@ -55,12 +55,11 @@ export function useCancelRegistration() {
   const qc = useQueryClient();
   return useMutation({
     mutationFn: ({ registrationId, reason }) => api.cancelRegistration(registrationId, reason),
-    onSuccess: ({ registration }, { registrationId }) => {
+    onSuccess: ({ registration }) => {
       toast.success('Đã hủy đăng ký.');
       if (registration?.eventId) {
         qc.invalidateQueries({ queryKey: qk.event(registration.eventId) });
       }
-      qc.invalidateQueries({ queryKey: qk.registration(registrationId) });
       qc.invalidateQueries({ queryKey: ['my-registrations'] });
       qc.invalidateQueries({ queryKey: ['event-registrations'] });
     },

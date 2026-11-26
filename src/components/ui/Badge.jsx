@@ -3,19 +3,29 @@ import {
   REGISTRATION_STATUS_LABELS,
 } from '../../constants/roles';
 
+// Spec mục 7: pill px10 py4, Caption, nền nhạt + chữ đậm theo tone.
 const TONES = {
-  gray: 'bg-slate-100 text-slate-700 ring-slate-200',
-  blue: 'bg-brand-50 text-brand-600 ring-brand-200',
-  green: 'bg-emerald-50 text-emerald-700 ring-emerald-200',
-  amber: 'bg-amber-50 text-amber-700 ring-amber-200',
-  red: 'bg-red-50 text-red-700 ring-red-200',
+  gray: 'bg-slate-100 text-slate-700',
+  blue: 'bg-brand-50 text-brand-700',
+  green: 'bg-emerald-50 text-emerald-700',
+  amber: 'bg-amber-50 text-amber-700',
+  red: 'bg-red-50 text-red-700',
 };
 
-export function Badge({ tone = 'gray', children }) {
+const DOT_TONES = {
+  gray: 'bg-slate-500',
+  blue: 'bg-brand-500',
+  green: 'bg-emerald-500',
+  amber: 'bg-amber-500',
+  red: 'bg-red-500',
+};
+
+export function Badge({ tone = 'gray', dot = false, children }) {
   return (
     <span
-      className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium ring-1 ring-inset ${TONES[tone]}`}
+      className={`inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-xs font-medium ${TONES[tone]}`}
     >
+      {dot && <span className={`h-1.5 w-1.5 rounded-full ${DOT_TONES[tone]}`} aria-hidden="true" />}
       {children}
     </span>
   );

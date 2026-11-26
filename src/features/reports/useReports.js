@@ -15,12 +15,13 @@ export function useEventSummary(eventId, options = {}) {
 }
 
 /**
- * B2 — tải file CSV. Mutation để nút có trạng thái loading.
+ * B2 — tải file export (CSV/XLSX). Mutation để nút có trạng thái loading.
  * Lỗi được toast theo error.code qua xử lý lỗi tập trung của mutation.
  */
 export function useExportEventData(eventId) {
   return useMutation({
-    mutationFn: () => exportEventData(eventId),
+    mutationFn: ({ kind = 'registrations', format = 'xlsx' } = {}) =>
+      exportEventData(eventId, kind, format),
     onSuccess: ({ blob, filename }) => {
       triggerBlobDownload(blob, filename);
       toast.success('Đã tải file xuống.');

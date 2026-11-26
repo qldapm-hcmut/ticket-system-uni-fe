@@ -46,6 +46,11 @@ export async function updateEvent(eventId, body, version) {
   return { event: res.data?.data, meta: res.data?.meta };
 }
 
+/** E6 — DELETE /events/{id}: chỉ khi DRAFT. */
+export async function deleteEvent(eventId) {
+  await http.delete(`/events/${eventId}`);
+}
+
 /** E7 — POST /events/{id}/cancel: hủy sự kiện đã công bố. */
 export async function cancelEvent(eventId, reason) {
   const res = await http.post(`/events/${eventId}/cancel`, { reason });

@@ -3,6 +3,7 @@ import { useQueryClient } from '@tanstack/react-query';
 import { fetchMe, logoutApi } from './auth.api';
 import {
   getAccessToken,
+  getRefreshToken,
   setTokens,
   clearTokens,
 } from '../../utils/tokenStorage';
@@ -58,7 +59,7 @@ export function AuthProvider({ children }) {
 
   const logout = useCallback(async () => {
     try {
-      await logoutApi();
+      await logoutApi(getRefreshToken());
     } catch {
       /* dù backend lỗi vẫn đăng xuất phía client */
     } finally {

@@ -1,6 +1,4 @@
 import { useState } from 'react';
-import { fieldErrorsFrom } from '../../lib/fieldErrors';
-import { messageForError } from '../../constants/errorMessages';
 import { Link } from 'react-router-dom';
 import {
   usePendingApprovals,
@@ -74,12 +72,6 @@ export function PendingApprovalsPage() {
                       {ev.location} · sức chứa {ev.capacity}
                       {ev.createdBy ? ` · tạo bởi ${ev.createdBy.fullName}` : ''}
                     </p>
-                    {approve.isError && approve.variables?.eventId === ev.id && (
-                      <div role="alert" className="mt-2 text-sm text-red-600">
-                        <p>{messageForError(approve.error)}</p>
-                        {Object.entries(fieldErrorsFrom(approve.error)).map(([field, message]) => <p key={field}>{message}</p>)}
-                      </div>
-                    )}
                   </div>
                   <div className="flex gap-2">
                     <Button

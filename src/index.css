@@ -1,12 +1,30 @@
 @import 'tailwindcss';
 
+/* ===== Design tokens (SSOT: Figma 8:485 + spec mục 7) ===== */
 @theme {
-  --color-brand-50: #eff6ff;
-  --color-brand-100: #dbeafe;
-  --color-brand-200: #bfdbfe;
-  --color-brand-500: #1d4ed8;
-  --color-brand-600: #1e40af;
-  --color-brand-700: #1e3a8a;
+  /* Brand — trích từ logo BK (700 #032b91 đậm, 400 #1488db sáng) */
+  --color-brand-50: #eef6fd;
+  --color-brand-100: #d8ebfa;
+  --color-brand-200: #b3d8f4;
+  --color-brand-300: #6fb6ea;
+  --color-brand-400: #1488db;
+  --color-brand-500: #0f5fc0;
+  --color-brand-600: #0a45a8;
+  --color-brand-700: #032b91;
+  --color-brand-800: #022274;
+  --color-brand-900: #021a57;
+
+  /* Font: Be Vietnam Pro (nạp ở index.html), fallback hệ thống */
+  --font-sans: 'Be Vietnam Pro', system-ui, 'Segoe UI', Roboto, Arial, sans-serif;
+
+  /* Elevation */
+  --shadow-e1: 0 1px 3px rgb(15 23 42 / 0.06), 0 1px 2px rgb(15 23 42 / 0.04);
+  --shadow-e2: 0 8px 24px -4px rgb(3 43 145 / 0.1);
+
+  /* Bo góc: button/input 10 · card 14 · ticket 20 · pill 9999 */
+  --radius-control: 10px;
+  --radius-card: 14px;
+  --radius-ticket: 20px;
 }
 
 html,
@@ -17,10 +35,32 @@ body,
 
 body {
   @apply bg-slate-50 text-slate-800 antialiased;
-  font-family: ui-sans-serif, system-ui, 'Segoe UI', Roboto, Arial, sans-serif;
+  font-family: var(--font-sans);
 }
 
-/* Skeleton shimmer dùng chung cho mọi trạng thái loading */
+/* ===== Helper gradient (gom để không lặp class dài) ===== */
+.bg-brand-cover {
+  background-image: linear-gradient(135deg, var(--color-brand-700), var(--color-brand-400));
+}
+.bg-brand-hero {
+  background-image: linear-gradient(
+    160deg,
+    var(--color-brand-900) 0%,
+    var(--color-brand-700) 55%,
+    var(--color-brand-400) 100%
+  );
+}
+
+/* Ẩn scrollbar cho dải chip cuộn ngang */
+.no-scrollbar {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
+.no-scrollbar::-webkit-scrollbar {
+  display: none;
+}
+
+/* ===== Animations ===== */
 @keyframes skeleton-pulse {
   0%,
   100% {
@@ -28,5 +68,37 @@ body {
   }
   50% {
     opacity: 0.45;
+  }
+}
+
+/* Vạch quét QR (màn check-in) chạy lên xuống trong khung ngắm ~220px */
+@keyframes qr-scanline {
+  0% {
+    transform: translateY(6px);
+    opacity: 0.25;
+  }
+  50% {
+    transform: translateY(206px);
+    opacity: 1;
+  }
+  100% {
+    transform: translateY(6px);
+    opacity: 0.25;
+  }
+}
+
+.animate-qr-scanline {
+  animation: qr-scanline 2s ease-in-out infinite;
+}
+
+/* Tôn trọng prefers-reduced-motion: tắt animation không thiết yếu */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.001ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.001ms !important;
+    scroll-behavior: auto !important;
   }
 }

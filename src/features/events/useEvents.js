@@ -57,15 +57,26 @@ export function useUpdateEvent(eventId) {
   });
 }
 
+/** E6 — xóa DRAFT. */
+export function useDeleteEvent() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (eventId) => api.deleteEvent(eventId),
+    onSuccess: () => {
+      toast.success('Đã xóa sự kiện nháp.');
+      qc.invalidateQueries({ queryKey: ['managed-events'] });
+    },
+  });
+}
+
 /** P1 — gửi duyệt. */
 export function useSubmitEvent() {
   const qc = useQueryClient();
   return useMutation({
     mutationFn: (eventId) => api.submitEvent(eventId),
-    onSuccess: (_result, eventId) => {
+    onSuccess: (event) => {
       toast.success('Đã gửi duyệt sự kiện.');
-      qc.invalidateQueries({ queryKey: qk.event(eventId) });
-      qc.invalidateQueries({ queryKey: qk.approvalLogs(eventId) });
+      qc.setQueryData(qk.event(event.id), event);
       qc.invalidateQueries({ queryKey: ['managed-events'] });
     },
   });

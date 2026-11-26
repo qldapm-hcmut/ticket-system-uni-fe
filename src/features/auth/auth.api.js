@@ -1,5 +1,4 @@
 import { http, unwrap } from '../../lib/http';
-import { getRefreshToken } from '../../utils/tokenStorage';
 
 /**
  * Service đăng nhập / phiên (A26). Mọi call API auth gom ở đây.
@@ -19,7 +18,7 @@ export async function fetchMe() {
 }
 
 /** A3 — POST /auth/logout: thu hồi refresh token. */
-export async function logoutApi() {
-  if (!getRefreshToken()) return;
-  await http.post('/auth/logout');
+export async function logoutApi(refreshToken) {
+  if (!refreshToken) return;
+  await http.post('/auth/logout', { refreshToken });
 }

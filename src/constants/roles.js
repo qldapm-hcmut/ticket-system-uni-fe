@@ -8,6 +8,13 @@ export const ROLES = {
   ADMIN: 'ADMIN',
 };
 
+/** Nhãn tiếng Việt cho vai trò (hiển thị ở header/trang tài khoản). */
+export const ROLE_LABELS = {
+  STUDENT: 'Sinh viên',
+  ORGANIZER: 'Ban tổ chức',
+  ADMIN: 'Admin',
+};
+
 export const EVENT_STATUS = {
   DRAFT: 'DRAFT',
   PENDING_APPROVAL: 'PENDING_APPROVAL',
