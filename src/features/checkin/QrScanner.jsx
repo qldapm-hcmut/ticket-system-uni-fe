@@ -24,9 +24,9 @@ export function QrScanner({ onScan, paused }) {
 
   useEffect(() => {
     const scanner = new Html5Qrcode(elementId, { verbose: false });
-    let stopped = false;
+    let started = false;
 
-    scanner
+    const starting = scanner
       .start(
         { facingMode: 'environment' },
         { fps: 10, qrbox: { width: 240, height: 240 } },
@@ -40,6 +40,9 @@ export function QrScanner({ onScan, paused }) {
         },
         () => {}, // lỗi giải mã từng khung hình -> bỏ qua
       )
+      .then(() => {
+        started = true;
+      })
       .catch((err) => {
         setError(
           err?.name === 'NotAllowedError'
@@ -49,14 +52,17 @@ export function QrScanner({ onScan, paused }) {
       });
 
     return () => {
-      stopped = true;
-      scanner
-        .stop()
-        .then(() => scanner.clear())
+      // Chờ start() xong rồi mới dừng, và chỉ dừng khi camera đã chạy:
+      // html5-qrcode ném lỗi đồng bộ nếu gọi stop() khi scanner chưa chạy
+      // (không có camera / bị từ chối quyền), làm trắng cả trang check-in (D03).
+      starting
+        .then(() => {
+          if (!started) return undefined;
+          return scanner.stop().then(() => scanner.clear());
+        })
         .catch(() => {
-          /* camera có thể chưa start xong khi unmount */
+          /* bỏ qua lỗi khi dừng camera lúc unmount */
         });
-      void stopped;
     };
     // Chỉ khởi tạo camera một lần.
     // eslint-disable-next-line react-hooks/exhaustive-deps
